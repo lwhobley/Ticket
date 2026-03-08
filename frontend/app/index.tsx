@@ -25,7 +25,7 @@ const TICKET_DURATION = 24 * 60 * 60; // 24 hours in seconds
 const STORAGE_KEY = "@transit_ticket_activation";
 
 export default function Index() {
-  const [timeRemaining, setTimeRemaining] = useState(TICKET_DURATION);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [isBrightened, setIsBrightened] = useState(false);
@@ -50,26 +50,13 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    // Countdown timer
-    if (timeRemaining <= 0) {
-      setIsExpired(true);
-      return;
-    }
-
+    // Update current time every second
     const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const newTime = prev - 1;
-        if (newTime <= 0) {
-          setIsExpired(true);
-          clearInterval(interval);
-          return 0;
-        }
-        return newTime;
-      });
+      setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timeRemaining]);
+  }, []);
 
   const loadOrActivateTicket = async () => {
     try {
@@ -80,15 +67,13 @@ export default function Index() {
         const activationDate = new Date(activationTime);
         const now = new Date();
         const elapsed = Math.floor((now.getTime() - activationDate.getTime()) / 1000);
-        const remaining = TICKET_DURATION - elapsed;
 
-        if (remaining > 0) {
-          setTimeRemaining(remaining);
+        if (elapsed < TICKET_DURATION) {
           const expDate = new Date(activationDate.getTime() + TICKET_DURATION * 1000);
           setExpirationDate(expDate);
+          setIsExpired(false);
         } else {
           setIsExpired(true);
-          setTimeRemaining(0);
         }
       } else {
         // Activate new ticket
@@ -105,7 +90,6 @@ export default function Index() {
     const expDate = new Date(now.getTime() + TICKET_DURATION * 1000);
     
     setExpirationDate(expDate);
-    setTimeRemaining(TICKET_DURATION);
     setIsExpired(false);
 
     try {
@@ -145,14 +129,17 @@ export default function Index() {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(secs).padStart(2, "0")}`;
+  const formatCurrentTime = (date: Date) => {
+    // Convert to Central Time (CST/CDT - UTC-6 or UTC-5)
+    const options: Intl.DateTimeFormatOptions = {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZone: "America/Chicago",
+    };
+    
+    return date.toLocaleTimeString("en-US", options);
   };
 
   const formatExpirationDate = (date: Date | null) => {
@@ -165,6 +152,7 @@ export default function Index() {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: "America/Chicago",
     };
     
     return date.toLocaleDateString("en-US", options).replace(",", " at");
@@ -244,7 +232,7 @@ export default function Index() {
         {/* Countdown Timer Display */}
         <View style={styles.timerContainer}>
           <Text style={[styles.timer, isExpired && styles.expiredTimer]}>
-            {formatTime(timeRemaining)}
+            {formatCurrentTime(currentTime)}
           </Text>
         </View>
 
