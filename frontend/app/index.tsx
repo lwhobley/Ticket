@@ -4,6 +4,7 @@ import {
   View,
   StyleSheet,
   Platform,
+  Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,7 +15,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 
 const TICKET_DURATION = 24 * 60 * 60; // 24 hours in seconds
 const STORAGE_KEY = "@transit_ticket_activation";
