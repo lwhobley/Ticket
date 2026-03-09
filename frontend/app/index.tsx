@@ -163,13 +163,13 @@ export default function Index() {
             <View style={styles.logoContainer}>
               <Text style={styles.logoText}>RTA</Text>
               <View style={styles.chevronsContainer}>
-                <Svg width="20" height="28" viewBox="0 0 20 28">
-                  {/* Purple chevron - top */}
-                  <Path d="M2 2 L10 6 L2 10 Z" fill="#9333ea" />
-                  {/* Green chevron - middle */}
-                  <Path d="M2 11 L10 15 L2 19 Z" fill="#10b981" />
-                  {/* Orange chevron - bottom */}
-                  <Path d="M2 20 L10 24 L2 28 Z" fill="#f59e0b" />
+                <Svg width="24" height="30" viewBox="0 0 24 30">
+                  {/* Purple chevron - top, least offset */}
+                  <Path d="M0 2 L8 6 L0 10 Z" fill="#9333ea" />
+                  {/* Green chevron - middle, medium offset */}
+                  <Path d="M3 11 L11 15 L3 19 Z" fill="#10b981" />
+                  {/* Orange chevron - bottom, most offset */}
+                  <Path d="M6 20 L14 24 L6 28 Z" fill="#f59e0b" />
                 </Svg>
               </View>
             </View>
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: "700",
     color: "#000",
   },
