@@ -5,9 +5,11 @@ import {
   StyleSheet,
   Platform,
   Image,
+  TouchableOpacity,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Brightness from "expo-brightness";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,10 +22,25 @@ import Svg, { Circle } from "react-native-svg";
 const TICKET_DURATION = 24 * 60 * 60; // 24 hours in seconds
 const STORAGE_KEY = "@transit_ticket_activation";
 
+function generateTicketId(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let id = "";
+  for (let i = 0; i < 10; i++) {
+    if (i === 4 || i === 8) id += "-";
+    id += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return id;
+}
+
 export default function Index() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [activationTime, setActivationTime] = useState<Date | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(TICKET_DURATION);
   const [expirationDate, setExpirationDate] = useState<Date | null>(null);
   const [isExpired, setIsExpired] = useState(false);
+  const [ticketId, setTicketId] = useState("");
+  const [brightnessActive, setBrightnessActive] = useState(false);
+  const originalBrightnessRef = useRef<number | null>(null);
+  const brightnessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animation value for pulsing effect
   const pulseValue = useSharedValue(1);
@@ -44,9 +61,21 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    // Update current time every second
+    if (!activationTime) return;
+
+    // Update countdown every second
     const interval = setInterval(() => {
-      setCurrentTime(new Date());
+      const now = new Date();
+      const elapsed = Math.floor((now.getTime() - activationTime.getTime()) / 1000);
+      const remaining = TICKET_DURATION - elapsed;
+
+      if (remaining <= 0) {
+        setRemainingSeconds(0);
+        setIsExpired(true);
+        clearInterval(interval);
+      } else {
+        setRemainingSeconds(remaining);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
@@ -55,24 +84,26 @@ export default function Index() {
   const loadOrActivateTicket = async () => {
     try {
       const savedData = await AsyncStorage.getItem(STORAGE_KEY);
-      
+
       if (savedData) {
-        const { activationTime } = JSON.parse(savedData);
-        const activationDate = new Date(activationTime);
+        const { activationTime: savedTime, ticketId: savedId } = JSON.parse(savedData);
+        const activation = new Date(savedTime);
         const now = new Date();
-        const elapsed = Math.floor((now.getTime() - activationDate.getTime()) / 1000);
+        const elapsed = Math.floor((now.getTime() - activation.getTime()) / 1000);
 
         if (elapsed < TICKET_DURATION) {
-          // Set expiration to next day at current time
-          const expDate = new Date(now);
-          expDate.setDate(expDate.getDate() + 1);
+          // Expiration is exactly activation + 24h
+          const expDate = new Date(activation.getTime() + TICKET_DURATION * 1000);
+          setActivationTime(activation);
           setExpirationDate(expDate);
+          setRemainingSeconds(TICKET_DURATION - elapsed);
+          setTicketId(savedId || generateTicketId());
           setIsExpired(false);
         } else {
           setIsExpired(true);
+          setRemainingSeconds(0);
         }
       } else {
-        // Activate new ticket
         activateNewTicket();
       }
     } catch (error) {
@@ -83,34 +114,62 @@ export default function Index() {
 
   const activateNewTicket = async () => {
     const now = new Date();
-    // Set expiration to next day at current time
-    const expDate = new Date(now);
-    expDate.setDate(expDate.getDate() + 1);
-    
+    const expDate = new Date(now.getTime() + TICKET_DURATION * 1000);
+    const newTicketId = generateTicketId();
+
+    setActivationTime(now);
     setExpirationDate(expDate);
+    setRemainingSeconds(TICKET_DURATION);
+    setTicketId(newTicketId);
     setIsExpired(false);
 
     try {
       await AsyncStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ activationTime: now.toISOString() })
+        JSON.stringify({ activationTime: now.toISOString(), ticketId: newTicketId })
       );
     } catch (error) {
       console.error("Error saving ticket:", error);
     }
   };
 
-  const formatCurrentTime = (date: Date) => {
-    // Convert to Central Time (CST/CDT - UTC-6 or UTC-5)
-    const options: Intl.DateTimeFormatOptions = {
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      timeZone: "America/Chicago",
-    };
-    
-    return date.toLocaleTimeString("en-US", options);
+  const formatCountdown = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+  };
+
+  const handleShowToDriver = async () => {
+    if (brightnessActive) {
+      // Restore brightness manually
+      if (originalBrightnessRef.current !== null) {
+        await Brightness.setBrightnessAsync(originalBrightnessRef.current);
+      }
+      if (brightnessTimerRef.current) clearTimeout(brightnessTimerRef.current);
+      setBrightnessActive(false);
+      return;
+    }
+
+    try {
+      const { status } = await Brightness.requestPermissionsAsync();
+      if (status === "granted") {
+        const current = await Brightness.getBrightnessAsync();
+        originalBrightnessRef.current = current;
+        await Brightness.setBrightnessAsync(1.0);
+        setBrightnessActive(true);
+
+        // Auto-restore after 10 seconds
+        brightnessTimerRef.current = setTimeout(async () => {
+          if (originalBrightnessRef.current !== null) {
+            await Brightness.setBrightnessAsync(originalBrightnessRef.current);
+          }
+          setBrightnessActive(false);
+        }, 10000);
+      }
+    } catch (error) {
+      console.error("Brightness error:", error);
+    }
   };
 
   const formatExpirationDate = (date: Date | null) => {
@@ -139,13 +198,20 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
+
       {/* Header - Top Left */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>RTA</Text>
           <Text style={styles.headerSubtitle}>Show operator your ticket</Text>
         </View>
+      </View>
+
+      {/* Warning Banner */}
+      <View style={styles.warningBanner}>
+        <Text style={styles.warningText}>
+          ⚠️ Do not close this screen while boarding
+        </Text>
       </View>
 
       {/* Main Content */}
@@ -157,29 +223,27 @@ export default function Index() {
               cx="110"
               cy="110"
               r="95"
-              stroke="#f59e0b"
+              stroke={isExpired ? "#9ca3af" : "#f59e0b"}
               strokeWidth="18"
               fill="none"
             />
           </Svg>
-          
+
           {/* Center Logo/Badge */}
           <View style={styles.centerBadge}>
             <View style={styles.logoContainer}>
               <Text style={styles.logoText}>RTA</Text>
-              <Image
-                source={{ uri: 'https://customer-assets.emergentagent.com/job_ticket-countdown-1/artifacts/dx6kg4jd_IMG_1729.jpeg' }}
-                style={styles.chevronImage}
-                resizeMode="contain"
-              />
             </View>
           </View>
         </Animated.View>
 
-        {/* Time Display */}
+        {/* Countdown Timer */}
         <View style={styles.timerContainer}>
-          <Text style={styles.timer}>
-            {formatCurrentTime(currentTime)}
+          <Text style={[styles.timer, isExpired && styles.timerExpired]}>
+            {formatCountdown(remainingSeconds)}
+          </Text>
+          <Text style={styles.timerLabel}>
+            {isExpired ? "TICKET EXPIRED" : "TIME REMAINING"}
           </Text>
         </View>
 
@@ -191,7 +255,23 @@ export default function Index() {
           <Text style={styles.expirationText}>
             Expires {formatExpirationDate(expirationDate)}
           </Text>
+          {ticketId ? (
+            <Text style={styles.ticketIdText}>Ticket # {ticketId}</Text>
+          ) : null}
         </View>
+
+        {/* Show to Driver Button */}
+        {!isExpired && (
+          <TouchableOpacity
+            style={[styles.driverButton, brightnessActive && styles.driverButtonActive]}
+            onPress={handleShowToDriver}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.driverButtonText}>
+              {brightnessActive ? "Tap to Restore" : "Show Ticket to Driver"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -221,18 +301,32 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#000",
   },
+  warningBanner: {
+    backgroundColor: "#fef3c7",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#f59e0b",
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#92400e",
+    textAlign: "center",
+  },
   content: {
     flex: 1,
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 28,
   },
   circleContainer: {
     width: 220,
     height: 220,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   svg: {
     position: "absolute",
@@ -244,13 +338,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   logoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
   logoText: {
     fontSize: 32,
@@ -258,25 +354,31 @@ const styles = StyleSheet.create({
     color: "#000",
     letterSpacing: 1,
   },
-  chevronImage: {
-    width: 40,
-    height: 30,
-  },
   timerContainer: {
-    marginBottom: 32,
+    marginBottom: 28,
+    alignItems: "center",
   },
   timer: {
     fontSize: 52,
     fontWeight: "700",
     color: "#000",
     letterSpacing: -1,
+    fontVariant: ["tabular-nums"],
+  },
+  timerExpired: {
+    color: "#9ca3af",
+  },
+  timerLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#6b7280",
+    letterSpacing: 1.5,
+    marginTop: 4,
   },
   detailsCard: {
     width: "100%",
-    backgroundColor: "#ffffff",
-    borderRadius: 0,
-    padding: 0,
     paddingHorizontal: 24,
+    marginBottom: 28,
   },
   ticketType: {
     fontSize: 16,
@@ -297,5 +399,28 @@ const styles = StyleSheet.create({
   expirationText: {
     fontSize: 14,
     color: "#6b7280",
+    marginBottom: 6,
+  },
+  ticketIdText: {
+    fontSize: 12,
+    color: "#9ca3af",
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
+  driverButton: {
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    width: "100%",
+  },
+  driverButtonActive: {
+    backgroundColor: "#f59e0b",
+  },
+  driverButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });
