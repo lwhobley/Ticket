@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RTA Ticket</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #fff; }
+  .ticket {
+    background: #fff;
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 28px 24px 80px;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+  .ring-area { display: flex; justify-content: center; align-items: center; margin: 40px 0 32px; }
+  .ring-outer { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; }
+  .ring-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; }
+  .inner-circle { width: 140px; height: 140px; background: #efefef; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; box-shadow: inset 0 2px 8px rgba(0,0,0,0.13); }
+  .clock-display { text-align: center; font-size: 32px; font-weight: 700; color: #111; letter-spacing: -0.02em; margin-bottom: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .info-block { background: #f7f7f7; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05); padding: 16px 18px; margin-bottom: 16px; }
+  .ticket-title { font-size: 17px; font-weight: 700; color: #111; margin-bottom: 4px; }
+  .ticket-location { font-size: 15px; color: #555; }
+  .divider { height: 1px; background: #ddd; margin: 16px 0; }
+  .expires { font-size: 14px; color: #444; }
+</style>
+</head>
+<body>
+<div class="ticket">
+  <div style="margin-bottom: 0;">
+    <div style="font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 900; color: #1a1a1a; line-height: 1.1; letter-spacing: -0.01em;">RTA</div>
+    <div style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; font-weight: 400; letter-spacing: 0.05em; color: #555; text-transform: uppercase; margin-top: 1px;">Show operator your ticket</div>
+  </div>
+
+  <div class="ring-area">
+    <div class="ring-outer">
+      <svg class="ring-svg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">
+        <circle id="orangeRing" cx="120" cy="120" r="100" fill="none" stroke="#F5A623" stroke-width="28"/>
+      </svg>
+      <div class="inner-circle">
+        <svg width="78" height="26" viewBox="0 0 78 26" xmlns="http://www.w3.org/2000/svg">
+          <text x="0" y="21" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="900" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.6" paint-order="stroke">RTA</text>
+          <polyline points="52,8 57,13 52,18" fill="none" stroke="#6B21A8" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <polyline points="56,8 61,13 56,18" fill="none" stroke="#EAB308" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <polyline points="60,8 65,13 60,18" fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="clock-display" id="clockDisplay">--:--:-- --</div>
+
+  <div class="info-block">
+    <div class="ticket-title">Adult Regional Ride, 1 Day</div>
+    <div class="ticket-location">New Orleans, LA</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="expires" id="expiresText">Expires: --</div>
+</div>
+
+<script>
+  const ring = document.getElementById('orangeRing');
+  const clockEl = document.getElementById('clockDisplay');
+  const expiresEl = document.getElementById('expiresText');
+  const MIN_R = 85, MAX_R = 108, BASE_R = 100, PERIOD = 2800;
+
+  function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  function animateRing() {
+    const t = (performance.now() % PERIOD) / PERIOD;
+    const e = easeInOut(t < 0.5 ? t*2 : (1-t)*2);
+    const r = MIN_R + (MAX_R - MIN_R) * e;
+    ring.setAttribute('r', r);
+    ring.setAttribute('stroke-width', 28 + (r - BASE_R) * 0.5);
+    requestAnimationFrame(animateRing);
+  }
+
+  function updateClock() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2,'0');
+    const s = String(now.getSeconds()).padStart(2,'0');
+    const ampm = h >= 12 ? 'AM' : 'PM';
+    h = h % 12 || 12;
+    clockEl.textContent = `${String(h).padStart(2,'0')}:${m}:${s} ${ampm}`;
+    const exp = new Date(now);
+    exp.setHours(exp.getHours() + 23);
+    let eh = exp.getHours();
+    const eampm = eh >= 12 ? 'AM' : 'PM';
+    eh = eh % 12 || 12;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    expiresEl.textContent = `Expires: ${months[exp.getMonth()]} ${exp.getDate()}, ${exp.getFullYear()} at ${eh}:${String(exp.getMinutes()).padStart(2,'0')} ${eampm}`;
+  }
+
+  animateRing();
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
