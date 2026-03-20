@@ -11,7 +11,7 @@
     background: #fff;
     min-height: 100vh;
     font-family: Arial, Helvetica, sans-serif;
-    padding: 28px 24px 80px;
+    padding: 48px 24px 80px;
     max-width: 430px;
     margin: 0 auto;
   }
@@ -20,11 +20,10 @@
   .ring-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible; }
   .inner-circle { width: 140px; height: 140px; background: #efefef; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; box-shadow: inset 0 2px 8px rgba(0,0,0,0.13); }
   .clock-display { text-align: center; font-size: 32px; font-weight: 700; color: #111; letter-spacing: -0.02em; margin-bottom: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .info-block { background: #f7f7f7; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05); padding: 16px 18px; margin-bottom: 16px; }
+  .info-block { background: #f7f7f7; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05); padding: 16px 18px; }
   .ticket-title { font-size: 17px; font-weight: 700; color: #111; margin-bottom: 4px; }
-  .ticket-location { font-size: 15px; color: #555; }
-  .divider { height: 1px; background: #ddd; margin: 16px 0; }
-  .expires { font-size: 14px; color: #444; }
+  .ticket-location { font-size: 15px; color: #555; margin-bottom: 6px; }
+  .expires { font-size: 14px; font-weight: 600; color: #333; }
 </style>
 </head>
 <body>
@@ -55,10 +54,8 @@
   <div class="info-block">
     <div class="ticket-title">Adult Regional Ride, 1 Day</div>
     <div class="ticket-location">New Orleans, LA</div>
+    <div class="expires" id="expiresText">Expires: --</div>
   </div>
-
-  <div class="divider"></div>
-  <div class="expires" id="expiresText">Expires: --</div>
 </div>
 
 <script>
