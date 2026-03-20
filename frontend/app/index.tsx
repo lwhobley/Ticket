@@ -63,7 +63,9 @@ export default function Index() {
         const elapsed = Math.floor((now.getTime() - activationDate.getTime()) / 1000);
 
         if (elapsed < TICKET_DURATION) {
-          const expDate = new Date(activationDate.getTime() + TICKET_DURATION * 1000);
+          // Set expiration to next day at current time
+          const expDate = new Date(now);
+          expDate.setDate(expDate.getDate() + 1);
           setExpirationDate(expDate);
           setIsExpired(false);
         } else {
@@ -81,7 +83,9 @@ export default function Index() {
 
   const activateNewTicket = async () => {
     const now = new Date();
-    const expDate = new Date(now.getTime() + TICKET_DURATION * 1000);
+    // Set expiration to next day at current time
+    const expDate = new Date(now);
+    expDate.setDate(expDate.getDate() + 1);
     
     setExpirationDate(expDate);
     setIsExpired(false);
@@ -163,16 +167,11 @@ export default function Index() {
           <View style={styles.centerBadge}>
             <View style={styles.logoContainer}>
               <Text style={styles.logoText}>RTA</Text>
-              <View style={styles.chevronsContainer}>
-                <Svg width="24" height="30" viewBox="0 0 24 30">
-                  {/* Purple chevron - top, least offset */}
-                  <Path d="M0 2 L8 6 L0 10 Z" fill="#9333ea" />
-                  {/* Green chevron - middle, medium offset */}
-                  <Path d="M3 11 L11 15 L3 19 Z" fill="#10b981" />
-                  {/* Orange chevron - bottom, most offset */}
-                  <Path d="M6 20 L14 24 L6 28 Z" fill="#f59e0b" />
-                </Svg>
-              </View>
+              <Image
+                source={{ uri: 'https://customer-assets.emergentagent.com/job_ticket-countdown-1/artifacts/dx6kg4jd_IMG_1729.jpeg' }}
+                style={styles.chevronImage}
+                resizeMode="contain"
+              />
             </View>
           </View>
         </Animated.View>
@@ -259,8 +258,9 @@ const styles = StyleSheet.create({
     color: "#000",
     letterSpacing: 1,
   },
-  chevronsContainer: {
-    marginLeft: 4,
+  chevronImage: {
+    width: 40,
+    height: 30,
   },
   timerContainer: {
     marginBottom: 32,
