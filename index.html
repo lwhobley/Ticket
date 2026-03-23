@@ -80,13 +80,13 @@
     let h = now.getHours();
     const m = String(now.getMinutes()).padStart(2,'0');
     const s = String(now.getSeconds()).padStart(2,'0');
-    const ampm = h >= 12 ? 'AM' : 'PM';
+    const ampm = h >= 12 ? 'PM' : 'AM';
     h = h % 12 || 12;
     clockEl.textContent = `${String(h).padStart(2,'0')}:${m}:${s} ${ampm}`;
     const exp = new Date(now);
     exp.setHours(exp.getHours() + 23);
     let eh = exp.getHours();
-    const eampm = eh >= 12 ? 'AM' : 'PM';
+    const eampm = eh >= 12 ? 'PM' : 'AM';
     eh = eh % 12 || 12;
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     expiresEl.textContent = `Expires: ${months[exp.getMonth()]} ${exp.getDate()}, ${exp.getFullYear()} at ${eh}:${String(exp.getMinutes()).padStart(2,'0')} ${eampm}`;
